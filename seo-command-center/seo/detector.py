@@ -82,7 +82,7 @@ def normalize_url(url):
 
 
 def is_html(r):  return "text/html" in val(r, "Content Type").lower()
-def is_200(r):   return _int(r.get("Status Code")) == 200
+def is_200(r):   return _int(val(r, "Status Code")) == 200
 def indexable(r): return val(r, "Indexability").lower() == "indexable"
 
 def is_indexable_200(r):
@@ -108,7 +108,7 @@ def detect(rows: list[dict]) -> list[dict]:
     # --- Titles ---
     # missing_title: Title 1 empty, indexable 200 page
     add("missing_title", "High",
-        [normalize_url(r["Address"]) for r in idx200 if not val(r, "Title 1")],
+        [normalize_url(val(r, "Address")) for r in idx200 if not val(r, "Title 1")],
         "Indexable pages with no title tag.")
 
     # duplicate_title: same Title 1 on 2+ indexable URLs, ignore empty
@@ -116,26 +116,26 @@ def detect(rows: list[dict]) -> list[dict]:
     for r in idx200:
         t = val(r, "Title 1")
         if t:
-            by_title[t].append(normalize_url(r["Address"]))
+            by_title[t].append(normalize_url(val(r, "Address")))
     dup_t = [u for urls in by_title.values() if len(urls) > 1 for u in urls]
     add("duplicate_title", "High", dup_t, "Pages sharing an identical title.")
 
     # title_too_long: Title 1 Pixel Width > 561 OR Title 1 Length > 60
     add("title_too_long", "Medium",
-        [normalize_url(r["Address"]) for r in idx200
-         if _int(r.get("Title 1 Pixel Width")) > 561 or _int(r.get("Title 1 Length")) > 60],
+        [normalize_url(val(r, "Address")) for r in idx200
+         if _int(val(r, "Title 1 Pixel Width")) > 561 or _int(val(r, "Title 1 Length")) > 60],
         "Titles likely truncated in search results.")
 
     # title_too_short: Title 1 Length < 30 AND Title 1 not empty, indexable 200 page
     add("title_too_short", "Low",
-        [normalize_url(r["Address"]) for r in idx200
-         if _int(r.get("Title 1 Length")) < 30 and val(r, "Title 1")],
+        [normalize_url(val(r, "Address")) for r in idx200
+         if _int(val(r, "Title 1 Length")) < 30 and val(r, "Title 1")],
         "Titles that are too short to be effective.")
 
     # --- Meta Descriptions ---
     # missing_meta_description: Meta Description 1 empty, indexable 200 page
     add("missing_meta_description", "Medium",
-        [normalize_url(r["Address"]) for r in idx200 if not val(r, "Meta Description 1")],
+        [normalize_url(val(r, "Address")) for r in idx200 if not val(r, "Meta Description 1")],
         "Indexable pages with no meta description.")
 
     # duplicate_meta_description: same Meta Description 1 on 2+ indexable URLs, ignore empty
@@ -143,20 +143,20 @@ def detect(rows: list[dict]) -> list[dict]:
     for r in idx200:
         t = val(r, "Meta Description 1")
         if t:
-            by_meta[t].append(normalize_url(r["Address"]))
+            by_meta[t].append(normalize_url(val(r, "Address")))
     dup_meta = [u for urls in by_meta.values() if len(urls) > 1 for u in urls]
     add("duplicate_meta_description", "Medium", dup_meta, "Pages sharing an identical meta description.")
 
     # meta_description_too_long: Meta Description 1 Length > 155
     add("meta_description_too_long", "Low",
-        [normalize_url(r["Address"]) for r in idx200
-         if _int(r.get("Meta Description 1 Length")) > 155],
+        [normalize_url(val(r, "Address")) for r in idx200
+         if _int(val(r, "Meta Description 1 Length")) > 155],
         "Meta descriptions likely truncated in search results.")
 
     # --- H1s ---
     # missing_h1: H1-1 empty, any 200 HTML page
     add("missing_h1", "Medium",
-        [normalize_url(r["Address"]) for r in html if is_200(r) and not val(r, "H1-1")],
+        [normalize_url(val(r, "Address")) for r in html if is_200(r) and not val(r, "H1-1")],
         "Pages with no H1 heading.")
 
     # duplicate_h1: same H1-1 on 2+ indexable URLs, ignore empty
@@ -164,29 +164,29 @@ def detect(rows: list[dict]) -> list[dict]:
     for r in idx200:
         t = val(r, "H1-1")
         if t:
-            by_h1[t].append(normalize_url(r["Address"]))
+            by_h1[t].append(normalize_url(val(r, "Address")))
     dup_h1 = [u for urls in by_h1.values() if len(urls) > 1 for u in urls]
     add("duplicate_h1", "Low", dup_h1, "Pages sharing an identical H1.")
 
     # --- Response Codes ---
     # broken_link: Status Code 400–499
     add("broken_link", "High",
-        [normalize_url(r["Address"]) for r in rows if 400 <= _int(r.get("Status Code")) <= 499],
+        [normalize_url(val(r, "Address")) for r in rows if 400 <= _int(val(r, "Status Code")) <= 499],
         "URLs returning a client error (4xx).")
 
     # server_error: Status Code 500–599
     add("server_error", "High",
-        [normalize_url(r["Address"]) for r in rows if 500 <= _int(r.get("Status Code")) <= 599],
+        [normalize_url(val(r, "Address")) for r in rows if 500 <= _int(val(r, "Status Code")) <= 599],
         "URLs returning a server error (5xx).")
 
     # redirect: Status Code 300–399
     add("redirect", "Medium",
-        [normalize_url(r["Address"]) for r in rows if 300 <= _int(r.get("Status Code")) <= 399],
+        [normalize_url(val(r, "Address")) for r in rows if 300 <= _int(val(r, "Status Code")) <= 399],
         "URLs that redirect (3xx).")
 
     # redirect_chain: 3xx URL whose Redirect URL target is also a key in the redirect map
-    redirect_map = {normalize_url(r["Address"]): normalize_url(val(r, "Redirect URL"))
-                    for r in rows if 300 <= _int(r.get("Status Code")) <= 399 and val(r, "Redirect URL")}
+    redirect_map = {normalize_url(val(r, "Address")): normalize_url(val(r, "Redirect URL"))
+                    for r in rows if 300 <= _int(val(r, "Status Code")) <= 399 and val(r, "Redirect URL")}
 
     chain_starts = [url for url in redirect_map if redirect_map[url] in redirect_map]
     add("redirect_chain", "High", chain_starts, "URLs that are part of a redirect chain.")
@@ -194,23 +194,23 @@ def detect(rows: list[dict]) -> list[dict]:
     # --- Content & Indexability ---
     # thin_content: Word Count < 200, indexable page
     add("thin_content", "Low",
-        [normalize_url(r["Address"]) for r in rows if indexable(r) and _int(r.get("Word Count")) < 200],
+        [normalize_url(val(r, "Address")) for r in rows if indexable(r) and _int(val(r, "Word Count")) < 200],
         "Indexable pages with low word count.")
 
     # non_indexable_but_linked: Indexability == "Non-Indexable" AND Inlinks > 0
     add("non_indexable_but_linked", "Medium",
-        [normalize_url(r["Address"]) for r in rows if val(r, "Indexability") == "Non-Indexable" and _int(r.get("Inlinks")) > 0],
+        [normalize_url(val(r, "Address")) for r in rows if val(r, "Indexability") == "Non-Indexable" and _int(val(r, "Inlinks")) > 0],
         "Pages marked non-indexable but have internal links.")
 
     # orphan_page: Inlinks == 0, indexable 200 page
     add("orphan_page", "Medium",
-        [normalize_url(r["Address"]) for r in idx200 if _int(r.get("Inlinks")) == 0],
+        [normalize_url(val(r, "Address")) for r in idx200 if _int(val(r, "Inlinks")) == 0],
         "Indexable pages with zero internal links in.")
 
     # --- Performance ---
     # slow_page: Response Time > 1.0
     add("slow_page", "Low",
-        [normalize_url(r["Address"]) for r in rows if _float(r.get("Response Time")) > 1.0],
+        [normalize_url(val(r, "Address")) for r in rows if _float(val(r, "Response Time")) > 1.0],
         "Pages with response times greater than 1 second.")
 
     return issues
@@ -221,7 +221,7 @@ def summarize(issues: list[dict]) -> dict:
     for i in issues:
         by_sev[i["severity"]] += 1
     return {"total_issues": len(issues),
-            "by_severity": {"High": by_sev["High"], "Medium": by_sev["Medium"], "Low": by_sev["Low"]}}
+            "by_severity": {"High": by_sev.get("High", 0), "Medium": by_sev.get("Medium", 0), "Low": by_sev.get("Low", 0)}}
 
 
 if __name__ == "__main__":
