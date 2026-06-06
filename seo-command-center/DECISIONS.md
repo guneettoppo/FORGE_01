@@ -22,4 +22,5 @@ Format:
 ---
 
 ## My log
-- `[--:--]` ...
+- `[14:57]` added int and float to explicitly handle None, empty string and whitespace strings making them return default value or calling out exception.
+also normalised url and strip strings for clean retrievel.

@@ -23,21 +23,75 @@ def load_rows(export_dir: str) -> list[dict]:
 
 def _int(v, default=0):
     try:
-        return int(float(str(v).strip()))
-    except Exception:
+        if v is None: return default
+        s = str(v).strip()
+        if not s: return default
+        return int(float(s))
+    except (ValueError, TypeError):
         return default
 
 
 def _float(v, default=0.0):
     try:
-        return float(str(v).strip())
-    except Exception:
+        if v is None: return default
+        s = str(v).strip()
+        if not s: return default
+        return float(s)
+    except (ValueError, TypeError):
         return default
 
 
-def is_html(r):  return "text/html" in (r.get("Content Type", "") or "").lower()
+def val(r, key, default=""):
+    return str(r.get(key, default) or "").strip()
+
+
+def normalize_url(url):
+    if not url:
+        return ""
+    u = str(url).strip()
+    # Remove fragment
+    u = u.split('#')[0]
+
+    if "://" in u:
+        scheme, rest = u.split("://", 1)
+        if "@" in rest:
+            # Handle user:pass@host
+            _, host_path = rest.split("@", 1)
+        else:
+            host_path = rest
+
+        # Split host and path
+        if "/" in host_path:
+            host, path = host_path.split("/", 1)
+            path = "/" + path
+        else:
+            host, path = host_path, ""
+
+        # Lowercase scheme and host
+        u = f"{scheme.lower()}://{host.lower()}{path}"
+    else:
+        u = u.lower()
+
+    # Remove trailing slash unless path is exactly "/"
+    if u.endswith("/") and u != "/":
+        # Ensure we don't strip the slash if it's just the root of a domain
+        # e.g. http://example.com/ -> http://example.com/ is usually kept,
+        # but the requirement says "remove trailing slash UNLESS path is '/'"
+        # In "http://example.com/", the path is indeed "/"
+
+        # Let's check if it's just "scheme://host/"
+        # If there is no second slash after the host, the path is "/"
+        if u.count("/") == 2 or (u.startswith("//") and u.count("/") == 1):
+            pass # Keep it
+        else:
+            u = u[:-1]
+    return u
+
+
+
+def is_html(r):  return "text/html" in val(r, "Content Type").lower()
 def is_200(r):   return _int(r.get("Status Code")) == 200
-def indexable(r): return (r.get("Indexability", "") or "").strip().lower() == "indexable"
+def indexable(r): return val(r, "Indexability").lower() == "indexable"
 
 
 def detect(rows: list[dict]) -> list[dict]:
@@ -56,37 +110,37 @@ def detect(rows: list[dict]) -> list[dict]:
 
     # --- Titles ---
     add("missing_title", "High",
-        [r["Address"] for r in idx200 if not (r.get("Title 1", "") or "").strip()],
+        [normalize_url(r["Address"]) for r in idx200 if not val(r, "Title 1")],
         "Indexable pages with no title tag.")
 
     # duplicate titles (indexable only)
     by_title = defaultdict(list)
     for r in idx200:
-        t = (r.get("Title 1", "") or "").strip()
+        t = val(r, "Title 1")
         if t:
-            by_title[t].append(r["Address"])
+            by_title[t].append(normalize_url(r["Address"]))
     dup_t = [u for urls in by_title.values() if len(urls) > 1 for u in urls]
     add("duplicate_title", "High", dup_t, "Pages sharing an identical title.")
 
     add("title_too_long", "Medium",
-        [r["Address"] for r in idx200
+        [normalize_url(r["Address"]) for r in idx200
          if _int(r.get("Title 1 Pixel Width")) > 561 or _int(r.get("Title 1 Length")) > 60],
         "Titles likely truncated in search results.")
 
     # --- Response codes ---
     add("broken_link", "High",
-        [r["Address"] for r in rows if 400 <= _int(r.get("Status Code")) <= 499],
+        [normalize_url(r["Address"]) for r in rows if 400 <= _int(r.get("Status Code")) <= 499],
         "URLs returning a client error (4xx).")
     add("server_error", "High",
-        [r["Address"] for r in rows if 500 <= _int(r.get("Status Code")) <= 599],
+        [normalize_url(r["Address"]) for r in rows if 500 <= _int(r.get("Status Code")) <= 599],
         "URLs returning a server error (5xx).")
     add("redirect", "Medium",
-        [r["Address"] for r in rows if 300 <= _int(r.get("Status Code")) <= 399],
+        [normalize_url(r["Address"]) for r in rows if 300 <= _int(r.get("Status Code")) <= 399],
         "URLs that redirect (3xx).")
 
     # --- Orphan pages ---
     add("orphan_page", "Medium",
-        [r["Address"] for r in idx200 if _int(r.get("Inlinks")) == 0],
+        [normalize_url(r["Address"]) for r in idx200 if _int(r.get("Inlinks")) == 0],
         "Indexable pages with zero internal links in.")
 
     # ----------------------------------------------------------------------- #
