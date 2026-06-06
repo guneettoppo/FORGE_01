@@ -186,14 +186,10 @@ def detect(rows: list[dict]) -> list[dict]:
 
     # redirect_chain: 3xx URL whose Redirect URL target is also a key in the redirect map
     redirect_map = {normalize_url(r["Address"]): normalize_url(val(r, "Redirect URL"))
-                    for r in rows if 300 <= _int(r.get("Status Code")) <= 399}
+                    for r in rows if 300 <= _int(r.get("Status Code")) <= 399 and val(r, "Redirect URL")}
 
-    chains = []
-    for start_url, target_url in redirect_map.items():
-        if target_url and target_url in redirect_map:
-            chains.append(start_url)
-
-    add("redirect_chain", "High", chains, "URLs that are part of a redirect chain.")
+    chain_starts = [url for url in redirect_map if redirect_map[url] in redirect_map]
+    add("redirect_chain", "High", chain_starts, "URLs that are part of a redirect chain.")
 
     # --- Content & Indexability ---
     # thin_content: Word Count < 200, indexable page
