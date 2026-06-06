@@ -58,3 +58,9 @@ def normalize_url(url):
 
 **for** So that the all detectors use the normalised value instead of some using raw csv values
 
+5. **Prompt:** "See the report schema json file which is outside the current directory and make sure it matches report.json which is generated is matched strictly according to it. if it is not matching make all the necessary changes."
+
+**For:** Ensuring report.json output conforms to the schema contract defined in report.schema.json.
+
+**Revised?** Yes — changed run.py output generation to match schema exactly; was missing fields and incorrect nesting.
+
