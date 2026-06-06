@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+
 # export-transcript.sh — saves your Claude Code session transcript to agent-log.md.
 # Claude Code writes a full JSONL transcript per project under ~/.claude/projects/.
 # This finds the most recent one and renders it to a readable agent-log.md to commit.
