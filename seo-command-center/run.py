@@ -19,7 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "mcp"))
 sys.path.insert(0, HERE)
 import server  # the MCP server module exposes every tool as a function
-
+from seo import detector, fixer
 
 def main():
     ap = argparse.ArgumentParser()
@@ -35,6 +35,10 @@ def main():
     t0 = time.time()
     server.seo_load(args.export_dir)
     res = server.seo_detect()
+
+    # Champion Tier: Implement the fixer logic
+    # This populates server.RUN["fixes"] via the set_fixes call in fixer.py
+    fixer.generate_fixes(server.RUN["issues"], server.RUN.get("rows", []))
 
     # starter recommendations from the detected issues (the skill writes richer ones)
     issues = sorted(server.RUN["issues"], key=lambda x: {"High":0,"Medium":1,"Low":2}.get(x["severity"],3))
